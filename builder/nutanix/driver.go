@@ -824,11 +824,12 @@ func (d *NutanixDriver) CreateRequest(ctx context.Context, vmConfig VmConfig, st
 		if err != nil {
 			return nil, fmt.Errorf("error while findProjectByName, %s", err.Error())
 		}
-		if project.Metadata != nil && project.Metadata.UUID != nil {
-			v4vm.OwnershipInfo = vmmModels.NewOwnershipInfo()
-			v4vm.OwnershipInfo.Owner = vmmModels.NewOwnerReference()
-			v4vm.OwnershipInfo.Owner.ExtId = project.Metadata.UUID
+		if project.Metadata == nil || project.Metadata.UUID == nil {
+			return nil, fmt.Errorf("project %q has no UUID", vmConfig.Project)
 		}
+		projectRef := vmmModels.NewProjectReference()
+		projectRef.ExtId = project.Metadata.UUID
+		v4vm.Project = projectRef
 	}
 
 	return v4vm, nil
