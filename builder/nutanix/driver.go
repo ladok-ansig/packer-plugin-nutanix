@@ -1472,6 +1472,23 @@ func (d *NutanixDriver) SaveVMDisk(ctx context.Context, diskUUID string, index i
 		v4Image.CategoryExtIds = categoryExtIds
 	}
 
+	// V3 client needed for projects (no V4 Projects API yet)
+	configCreds := d.getConfigCreds()
+	conn, err := v3.NewV3Client(configCreds)
+	if err != nil {
+		return nil, err
+	}
+	if d.Config.Project != "" {
+		project, err := findProjectByName(ctx, conn, d.Config.Project)
+		if err != nil {
+			return nil, fmt.Errorf("error while findProjectByName, %s", err.Error())
+		}
+		if project.Metadata == nil || project.Metadata.UUID == nil {
+			return nil, fmt.Errorf("project %q has no UUID", d.Config.Project)
+		}
+		v4Image.ProjectExtId = project.Metadata.UUID
+	}
+
 	log.Printf("creating image %s from VM disk %s...", name, diskUUID)
 	createdImage, err := v4Client.Images.Create(ctx, v4Image)
 	if err != nil {
