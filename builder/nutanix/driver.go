@@ -1095,7 +1095,37 @@ func (d *NutanixDriver) CreateImageFile(ctx context.Context, filePath string, vm
 
 	log.Printf("creating and uploading image: %s", file)
 
-	err = v4Client.Images.Upload(ctx, file, filePath)
+	var projectUUID string = ""
+	if d.Config.Project != "" {
+		// V3 client needed for projects (no V4 Projects API yet)
+		configCreds := d.getConfigCreds()
+		conn, err := v3.NewV3Client(configCreds)
+		if err != nil {
+
+		}
+
+		project, err := findProjectByName(ctx, conn, d.Config.Project)
+		if err != nil {
+			return nil, fmt.Errorf("error while findProjectByName, %s", err.Error())
+		}
+		if project.Metadata == nil || project.Metadata.UUID == nil {
+			return nil, fmt.Errorf("project %q has no UUID", d.Config.Project)
+		}
+
+		projectUUID = *project.Metadata.UUID
+	}
+
+	uploadOpt := func(opts *converged.UploadOptions) {
+		if opts == nil {
+			return
+		}
+
+		if projectUUID != "" {
+			opts.ProjectUUID = projectUUID
+		}
+	}
+
+	err = v4Client.Images.Upload(ctx, file, filePath, uploadOpt)
 	if err != nil {
 		return nil, fmt.Errorf("error while uploading image: %s", err.Error())
 	}
